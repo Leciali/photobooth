@@ -35,6 +35,8 @@ create table events (
   owner_id uuid not null references operators(id) on delete cascade,
   template_id uuid references templates(id) on delete set null,
   is_active boolean not null default true,
+  price_per_session integer not null default 25000,
+  is_payment_enabled boolean not null default true,
   gallery_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -60,11 +62,16 @@ create table sessions (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references events(id) on delete cascade,
   session_code varchar not null,
+  customer_email varchar,
   status varchar not null default 'capturing'
     check (status in ('capturing','processing','completed','failed')),
   raw_photos text[] not null default '{}',
   composite_url text,
+  gif_url text,
   enhanced_url text,
+  payment_status varchar not null default 'pending'
+    check (payment_status in ('pending','paid','bypassed')),
+  payment_gateway_tx_id varchar,
   download_count integer not null default 0,
   created_at timestamptz not null default now()
 );
@@ -107,9 +114,15 @@ create policy "operators_self" on operators
 create policy "operators_self_update" on operators
   for update using (id = auth.uid());
 
--- Templates: owner-scoped
-create policy "templates_owner_all" on templates
-  for all using (owner_id = auth.uid());
+-- Templates: owner-scoped for write; public read so the guest kiosk can list frames
+create policy "templates_owner_insert" on templates
+  for insert with check (owner_id = auth.uid());
+create policy "templates_owner_update" on templates
+  for update using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "templates_owner_delete" on templates
+  for delete using (owner_id = auth.uid());
+create policy "templates_public_read" on templates
+  for select using (true);
 
 -- Events: owner-scoped for write; public read for active events (kiosk/gallery need this)
 create policy "events_owner_write" on events

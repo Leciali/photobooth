@@ -1,0 +1,19 @@
+{
+  "name": "photobooth-daemon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local print server daemon for the photobooth ecosystem (mDNS + Supabase Realtime + SQLite queue)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2",
+    "bonjour-service": "^1",
+    "ws": "^8"
+  }
+}

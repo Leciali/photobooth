@@ -1,6 +1,6 @@
 # Photobooth Ecosystem
 
-Cloud-first, event-ready photo booth system: kiosk capture (iPad/PWA), local print daemon with offline resilience, guest gallery via QR, and admin dashboard. Stack: Next.js 14, TypeScript, Tailwind, Supabase, Cloudflare R2, Node.js print daemon.
+Cloud-first, event-ready photo booth system: kiosk capture (iPad/PWA), local print daemon with offline resilience, guest gallery via QR, and admin dashboard. Stack: Next.js 16, TypeScript, Tailwind CSS, Supabase, Cloudflare R2, Node.js print daemon.
 
 ## Read in this order before doing anything
 1. `docs/PRD.md` — product requirements, success metrics, scope (what's in vs. explicitly deferred)
@@ -12,7 +12,17 @@ Cloud-first, event-ready photo booth system: kiosk capture (iPad/PWA), local pri
 7. `docs/SKILL.md` — photobooth-ops skill definition (print queue diagnostics, template validation, etc.)
 
 ## Status
-Phase 0 (setup) — see `docs/TODO.md` for the live checklist.
+Core web app scaffolded and building cleanly (Phases 0–1):
+
+- **Landing page** (`/`) — public brand page with "Launch App" button (top-right)
+- **Operator login** (`/login`) — Supabase Auth + role gate (`owner`/`staff` from `operators` table)
+- **Dashboard** (`/dashboard`) — create events (slug, price/session, payment toggle), launch kiosk, monitor print queue
+- **iPad Kiosk** (`/kiosk/[slug]`) — Welcome → QRIS (Midtrans sandbox or cash bypass) → email → frame pick → 3-2-1 camera capture (4 shots) → 300 DPI composite + GIF → print job → QR gallery
+- **Guest gallery** (`/gallery/[sessionCode]`) — download composite/GIF/raw photos, honors `gallery_expires_at`
+- **Print queue monitor** (`/print-queue/[slug]`) — live Realtime job status + printer health
+- **Print daemon** (`daemon/`) — Node.js; mDNS advertisement (`photobooth-print-server.local:8080`), Supabase Realtime listener, SQLite durable queue, LAN `/print` fallback, retry (max 2) + failover reporting
+
+Next: apply Supabase schema (see `docs/SETUP.md`), wire real R2 credentials, then Midtrans production + Resend keys.
 
 ## Quick start
 ```bash
@@ -20,14 +30,22 @@ cp .env.example .env.local   # fill in Supabase + R2 credentials
 npm install
 npm run dev
 ```
-Full setup instructions, including the separate print-daemon project and Supabase schema, are in `docs/SETUP.md`.
+The print daemon is a separate project (runs on the venue laptop):
+```bash
+cd daemon && npm install && npm start
+```
+Full setup instructions, including the Supabase schema, are in `docs/SETUP.md`.
 
 ## Repo structure
 ```
 photobooth/
-├── docs/                  # product & architecture docs (see reading order above)
+├── app/                    # Next.js App Router (landing, login, dashboard, kiosk, gallery, print-queue, API)
+├── components/             # (shared UI components)
+├── lib/                    # supabase clients, types, kiosk helpers (composite, gif, session)
+├── daemon/                 # separate Node.js print daemon project
+├── docs/                   # product & architecture docs (see reading order above)
 ├── supabase/
-│   └── schema.sql         # run this in the Supabase SQL editor
+│   └── schema.sql          # run this in the Supabase SQL editor
 ├── AGENTS.md               # instructions for AI coding agents (Claude Code, Cursor, etc.)
 ├── .env.example
 └── README.md
